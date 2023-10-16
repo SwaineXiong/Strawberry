@@ -1,0 +1,116 @@
+---
+title: "MA 615 Strawberry EDA"
+author: "Chenxuan Xiong"
+format: html
+editor: visual
+---
+
+## Data acquisition and assessment
+
+[Data Source](https://quickstats.nass.usda.gov/) [The data have been stored on NASS here:](https://quickstats.nass.usda.gov/results/45FBC825-B104-38E2-9802-839F5F3C7036)
+
+Original Conditions:
+
+Organization: The dataset is consists of basic information of strawberry growing information include year, period, price, state and organic conditions etc.
+
+Problems: There are lots of NAs and single value columns. Also there exists missing values in Value and CV filled with (D), (H) or just blank cells. Records in Data.item column is messy. - Data sources\
+- Assumptions and motivations
+
+## Data cleaning and organization
+
+```{r}
+#| label: Load libraries
+#| warning: false
+#| message: false
+#| echo: false
+
+library(knitr)  
+library(kableExtra)
+library(tidyverse)
+library(stringr)
+```
+
+First, Remove columns with only NAs.
+
+```{r}
+#| label: drop one-item columns
+#| echo: false
+
+## define function
+#drop NA
+strawberry <- strawberry %>%
+  select_if(~ !all(is.na(.)))
+```
+
+Then, Remove columns with only single value.
+
+```{r}
+#drop single value columns
+single_value <- function(vec){
+  tab <- table(vec)
+  if (length(tab) == 1) {
+    return(TRUE)
+  }
+  else{
+    return(FALSE)
+  }
+}
+
+
+drop_single_value_col <- function(df) {
+  cols_to_drop <- c()
+  for (i in 1:(ncol(df) - 1)) {
+    if (single_value(df[, i])) {
+      cols_to_drop <- c(cols_to_drop, i)
+    }
+  }
+  df <- df[, -cols_to_drop]
+  return(df)
+}
+
+strawberry1 <- drop_single_value_col(strawberry)
+
+View(strawberry)
+```
+
+```{r}
+#| label: Load libraries
+#| warning: false
+#| message: false
+#| echo: false
+
+library(knitr)  
+library(kableExtra)
+library(tidyverse)
+library(stringr)
+```
+
+## References
+
+### Material about strawberries
+
+[WHO says strawberries may not be so safe for you--2017March16](https://med.news.am/eng/news/13621/who-says-strawberries-may-not-be-so-safe-for-you.html)
+
+[Pesticides + poison gases = cheap, year-round strawberries 2019March20](https://www.ewg.org/foodnews/strawberries.php)
+
+[Multistate Outbreak of Hepatitis A Virus Infections Linked to Fresh Organic Strawberries-2022March5](https://www.cdc.gov/hepatitis/outbreaks/2022/hav-contaminated-food/index.htm)
+
+[Strawberry makes list of cancer-fighting foods-2023May31](https://issuu.com/mechlocal/docs/053123_mech_asf/s/25386339)
+
+### Technical references
+
+In their handbook ["An introduction to data cleaning with R" by Edwin de Jonge and Mark van der Loo](https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf), de Jonge and van der Loo go into detail about specific data cleaning isssues and how to handle them in R.
+
+["Problems, Methods, and Challenges in Comprehensive Data Cleansing" by Heiko Müller and Johann-Christoph Freytag](https://www.researchgate.net/profile/Heiko-Mueller/publication/228929938_Problems_methods_and_challenges_in_comprehensive_data_cleansing/links/09e415101b58541e2c000000/Problems-methods-and-challenges-in-comprehensive-data-cleansing.pdf) is a good companion to the de Jonge and van der Loo handbook, offering additional insights.
+
+## Initial questions
+
+## The data
+
+[Data Source](https://quickstats.nass.usda.gov/) [The data have been stored on NASS here:](https://quickstats.nass.usda.gov/results/45FBC825-B104-38E2-9802-839F5F3C7036)
+
+Original Conditions:
+
+Organization:
+
+Problems:There are lots of NAs and single value columns. Also there exists missing values in Value and CV filled with (D), (H) or just blank cells. Records in Data.item column is messy.
