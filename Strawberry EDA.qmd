@@ -9,12 +9,21 @@ editor: visual
 
 [Data Source](https://quickstats.nass.usda.gov/) [The data have been stored on NASS here:](https://quickstats.nass.usda.gov/results/45FBC825-B104-38E2-9802-839F5F3C7036)
 
-Original Conditions:
+### Original Conditions:
 
-Organization: The dataset is consists of basic information of strawberry growing information include year, period, price, state and organic conditions etc.
+#### Organization:
 
-Problems: There are lots of NAs and single value columns. Also there exists missing values in Value and CV filled with (D), (H) or just blank cells. Records in Data.item column is messy. - Data sources\
-- Assumptions and motivations
+The dataset is consists of basic information of strawberry growing information include year, period, price, state and organic conditions etc.
+
+#### Problems:
+
+There are lots of NAs and single value columns. Also there exists missing values in Value and CV filled with (D), (H) or just blank cells. Records in Data.item column is messy.
+
+## Initial questions
+
+#### Assumptions and motivations:
+
+This research is to find recent year's chemical used and it's severity level distribution in each state.
 
 ## Data cleaning and organization
 
@@ -33,8 +42,6 @@ library(stringr)
 Step 1: Remove columns with only NAs.
 
 ```{r}
-#| label: drop one-item columns
-#| echo: false
 #read data
 strawberry <- read.csv("strawberry.csv")
 ## define function
@@ -43,9 +50,9 @@ strawberry <- strawberry %>%
   select_if(~ !all(is.na(.)))
 ```
 
-Step 2: Remove columns with only single value.
+Step 2: Remove columns with only single value. And we separate dataset by survey and census. The rest of analysis are focus on survey data.
 
-```{r}
+```{r, warning=FALSE}
 #drop single value columns
 single_value <- function(vec){
   tab <- table(vec)
@@ -75,10 +82,10 @@ strawberry1 <- drop_single_value_col(strawberry)
 strawberry1$Value <- as.numeric(strawberry1$Value)
 strawberry_census <- subset(strawberry1, Program == "CENSUS")
 strawberry_survey <- subset(strawberry1, Program == "SURVEY")
-View(strawberry)
+
 ```
 
-Step 3: Deal with the (D) value in the Value column. We replace (D) values by the mean of "Value" of each data item group.
+Step 3: Deal with the (D) value in the Value column. We replace (D) value by the mean of "Value" of each data item group.
 
 ```{r}
 ##First we drop all (D)s ,(Z)s and (NA)s in the dataset.
@@ -102,76 +109,6 @@ strawberry_survey_1 <- strawberry_survey %>%
   group_by(Data.Item) %>%
   mutate(Value = ifelse(is.na(Value), mean(Value, na.rm = TRUE), Value))
 
-
-strawberry_survey_1 <- strawberry_survey_1 %>%
-  mutate(
-    Chemical = if_else(str_detect(Domain.Category, "\\(.*=.*\\)"),
-                       str_extract(Domain.Category, "(?<=\\().*?(?=\\=)"),
-                       NA_character_),
-    Chemical_Code = if_else(str_detect(Domain.Category, "\\(.*=.*\\)"),
-                            str_extract(Domain.Category, "(?<=\\=).*?(?=\\))"),
-                            NA_character_)
-  )
-
-
-
-# strawberry_survey_1$Chemical_Code_num <- as.numeric(strawberry_survey_1$Chemical_Code)
-# strawberry_survey_1$Chemical_Code_str <- ifelse(is.na(strawberry_survey_1$Chemical_Code_num),
-#                                         NA,
-#                                         sprintf("%06d", strawberry_survey_1$Chemical_Code_num))
-# library(httr)
-# library(jsonlite)
-# get_cas <- function(PC){
-#     path <- paste0("https://ordspub.epa.gov/ords/pesticides/apprilapi/?q=%7b%22ais%22:%7b%22$instr%22:%22", PC,"%22%7d%7d")
-#     r <- GET(url = path)
-#     r_text <- content(r, as = "text", encoding = "UTF-8")
-#     df <- fromJSON(r_text, flatten = TRUE)
-#     df_strwb <- df$items[grepl("Strawberries", df$items$sites, fixed=T),]
-#     ais <- df_strwb$ais[1]
-#     pattern <- "\\(([^A-Za-z]+)\\/([0-9-]+)\\)"
-#     text <- ais
-#     matches <- regmatches(text, gregexpr(pattern, text))
-#     cas <- sapply(matches, function(x) gsub(".*\\/([0-9-]+)\\)", "\\1", x)) 
-#     if (is.character(cas)) {
-#         return(cas[1])
-# } 
-#     else {
-#         return("can't find")
-# }
-# }
-# unique_stb=unique(strawberry_survey_1$Chemical_Code_str)
-# result=numeric()
-# k=numeric()
-# for(i in 1:length(unique_stb)){
-#   result[i]=get_cas(unique_stb[i])
-#   k[i]=unique_stb[i]
-#   print(result[i])
-# }
-# 
-# code_dict <- data.frame("pc_code" = k,
-#                           "cas_code" = result)
-write_csv(code_dict,"code_dict.csv")
-code_dict <- read.csv("code_dict.csv")
-
-
-WHO_CAS_to_SeverityTable <- read_excel("WHO - CAS-to-SeverityTable.xlsx")
-
-code_dict$Chemical_Code_num <- as.numeric(code_dict$k)
-code_dict$Chemical_Code_str <- ifelse(is.na(code_dict$Chemical_Code_num),
-                                         NA,
-                                         sprintf("%06d", code_dict$Chemical_Code_num))
-cas <- read.csv("CAS.csv",header=T)
-code_dict$pc_code <- as.numeric(code_dict$pc_code)
-code_dict$pc_code <- ifelse(is.na(code_dict$pc_code),NA,sprintf("%06d", code_dict$pc_code))
-merged_df_all <- read.csv("merage(1).csv")
-
-merged_df_all$Chemical_Code_num <- as.numeric(merged_df_all$k)
-merged_df_all$Chemical_Code_str <- ifelse(is.na(merged_df_all$Chemical_Code_num),
-                                         NA,
-                                         sprintf("%06d", merged_df_all$Chemical_Code_num))
-
-merged_df_strw <- merge(merged_df_all, strawberry_survey_1,by = "Chemical_Code_str")
-write_csv(merged_df_strw,"merged_df_strw.csv")
 ```
 
 Step 4: We find the severity of chemical used by converting PC code in the data set to CAS code. And then find the corresponding pesticide and its toxicity.
@@ -190,10 +127,10 @@ strawberry_survey_1 <- strawberry_survey_1 %>%
 
 
 
-# strawberry_survey_1$Chemical_Code_num <- as.numeric(strawberry_survey_1$Chemical_Code)
-# strawberry_survey_1$Chemical_Code_str <- ifelse(is.na(strawberry_survey_1$Chemical_Code_num),
-#                                         NA,
-#                                         sprintf("%06d", strawberry_survey_1$Chemical_Code_num))
+strawberry_survey_1$Chemical_Code_num <- as.numeric(strawberry_survey_1$Chemical_Code)
+strawberry_survey_1$Chemical_Code_str <- ifelse(is.na(strawberry_survey_1$Chemical_Code_num),
+                                         NA,
+                                         sprintf("%06d", strawberry_survey_1$Chemical_Code_num))
 # library(httr)
 # library(jsonlite)
 # get_cas <- function(PC){
@@ -225,13 +162,13 @@ strawberry_survey_1 <- strawberry_survey_1 %>%
 # 
 # code_dict <- data.frame("pc_code" = k,
 #                           "cas_code" = result)
-write_csv(code_dict,"code_dict.csv")
+#write_csv(code_dict,"code_dict.csv")
 code_dict <- read.csv("code_dict.csv")
 
 
-WHO_CAS_to_SeverityTable <- read_excel("WHO - CAS-to-SeverityTable.xlsx")
 
-code_dict$Chemical_Code_num <- as.numeric(code_dict$k)
+
+code_dict$Chemical_Code_num <- as.numeric(code_dict$pc_code)
 code_dict$Chemical_Code_str <- ifelse(is.na(code_dict$Chemical_Code_num),
                                          NA,
                                          sprintf("%06d", code_dict$Chemical_Code_num))
@@ -245,36 +182,112 @@ merged_df_all$Chemical_Code_str <- ifelse(is.na(merged_df_all$Chemical_Code_num)
                                          NA,
                                          sprintf("%06d", merged_df_all$Chemical_Code_num))
 
-merged_df_strw <- merge(merged_df_all, strawberry_survey_1,by = "Chemical_Code_str")
-write_csv(merged_df_strw,"merged_df_strw.csv")
-
+# merged_df_strw <- merge(merged_df_all, strawberry_survey_1,by = "Chemical_Code_str")
+# write_csv(merged_df_strw,"merged_df_strw.csv")
+merged_df_strw <- read.csv("merged_df_strw.csv")
 ```
 
 ## EDA
 
-### Severity level distribution of pesticides in each year
+### Strawberry bearing amount in states
 
-```{r}
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+production <- merged_df_strw|>
+  filter(Data.Item ==  "STRAWBERRIES, BEARING - APPLICATIONS, MEASURED IN LB")
+ggplot(production) +
+  aes(x = State, y = Value, colour = State) +
+  geom_col(fill = "#112446") +
+  scale_color_viridis_d(option = "viridis", direction = 1) +
+  labs(
+    y = "Bearing amount (measured in lb)",
+    title = "Total bearing amount in states (with records)"
+  ) +
+  theme_minimal()
+```
 
+In recent years, California had the largest strawberry bearing amount.
+
+```{r,echo=FALSE}
+# library(esquisse)
+# esquisser(production)
 ```
 
 ### Severity level distribution of pesticides used in each state
 
-```{r}
-
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+ggplot(merged_df_strw) +
+  aes(x = State, fill = cas) +
+  geom_bar() +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = "State",
+    y = "Count",
+    title = "Severity level distribution of pesticides used in each state"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_minimal()
 ```
+
+The chemical using in California is much higher than other states may due to the high production of strawberry in this state. Some severity level value missed in Michigan, Ohio Pennsylvania, Wisconsin. The data in New York, North Carolina and Other States are also partially missing. According to the records, the most severity level are NA and U in each state.
+
+### Severity level distribution of chemicals in each year
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+ggplot(merged_df_strw) +
+  aes(x = Year, fill = cas) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  labs(
+    x = "Year",
+    y = "Count",
+    title = "Severity level distribution in each year"
+  ) +
+  theme_minimal()
+```
+
+Some severity level value missed in 2017, 2020 and 2022. From the available data, most severity level of chemicals are NA and U.
 
 ### The most popular kind of chemical by year
 
-```{r}
+```{r, warning=FALSE}
+# library(esquisse)
+# esquisser(merged_df_strw)
+result <- merged_df_strw %>%
+  group_by(Chemical, Year) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
 
+most_popular_by_year <- result %>%
+  group_by(Year) %>%
+  slice_max(order_by = Chemical) %>%
+  ungroup()
+
+print(most_popular_by_year)
 ```
+
+Chemical data are missing in many years. We can only find popular chemical in 2016, 2018, 2019, 2021.
 
 ### The most popular kind of chemical by state
 
-```{r}
+```{r, warning=FALSE}
+result1 <- merged_df_strw %>%
+  group_by(Chemical, State) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
 
+most_popular_by_year1 <- result1 %>%
+  group_by(State) %>%
+  slice_max(order_by = Chemical) %>%
+  ungroup()
+
+print(most_popular_by_year1)
 ```
+
+Chemical data are missing in many states, we can only find most popular chemical in California, Florida, Oregon and Washington.
+
+## Further Works
+
+This research only focus on the survey data. There are lots of records missing. And only 11 states available in this dataset. To analysis the chemical use and sales condition in the whole country, we should analysis the census data which contains all states in the US.
 
 ## References
 
@@ -293,15 +306,3 @@ write_csv(merged_df_strw,"merged_df_strw.csv")
 In their handbook ["An introduction to data cleaning with R" by Edwin de Jonge and Mark van der Loo](https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf), de Jonge and van der Loo go into detail about specific data cleaning isssues and how to handle them in R.
 
 ["Problems, Methods, and Challenges in Comprehensive Data Cleansing" by Heiko Müller and Johann-Christoph Freytag](https://www.researchgate.net/profile/Heiko-Mueller/publication/228929938_Problems_methods_and_challenges_in_comprehensive_data_cleansing/links/09e415101b58541e2c000000/Problems-methods-and-challenges-in-comprehensive-data-cleansing.pdf) is a good companion to the de Jonge and van der Loo handbook, offering additional insights.
-
-## Initial questions
-
-## The data
-
-[Data Source](https://quickstats.nass.usda.gov/) [The data have been stored on NASS here:](https://quickstats.nass.usda.gov/results/45FBC825-B104-38E2-9802-839F5F3C7036)
-
-Original Conditions:
-
-Organization:
-
-Problems:There are lots of NAs and single value columns. Also there exists missing values in Value and CV filled with (D), (H) or just blank cells. Records in Data.item column is messy.
